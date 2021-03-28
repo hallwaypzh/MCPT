@@ -1,0 +1,7 @@
+Package: tinyobjloader
+Version: 2.0.0-rc2
+Architecture: x64-linux
+Multi-Arch: same
+Abi: 2b2b3b034b4b83135570dff90a1cb331168b7536
+Description: Tiny but powerful single file wavefront obj loader
+Type: Port

@@ -1,0 +1,226 @@
+#include <string>
+#include <iostream>
+#include <vector>
+#include <fstream>
+#include <random>
+#include <chrono>
+#include <thread>
+#include <mutex>
+
+#include "TriangleMeshes.h"
+#include "Triangle.h"
+#include "Camera.h"
+#include "KDTree.h"
+#include "AABB.h"
+#include "Scene.h"
+#include "PathTracer.h"
+#include "Sampler.h"
+#include "SceneParser.h"
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stbi_image_write.h"
+
+void output_depthmap(std::string &filename, std::vector<float> depth_buffer, int H, int W);
+void output_jpg(std::string name, std::vector<glm::vec3> img, int W, int H);
+
+int main(int argc, char* argv[]) {
+    if (argc < 3) {
+        std::cerr << "Need two args: path & dir";
+    }
+
+    //config camera as well as output resolution
+    //cornellbox
+    
+    int H = 1024 / 10;
+    int W = 1024 / 10;
+    glm::vec3 eye(0.f, 0.f, 2.5f);
+    glm::vec3 center(0.f, 0.f, 0.f);
+    glm::vec3 up(0.f, 1.f, 0.f);
+    float fovy = 60.f * M_PI / 180.f;
+    float aspect_ratio = W * 1.f / H;
+    
+    //diningroom
+    /*
+    int H = 1080 / 10;
+    int W = 1920 / 10;
+    glm::vec3 eye(0.f, 12.720f, 31.850f);
+    glm::vec3 center(0.f, 12.546f, 30.865f);
+    glm::vec3 up(0.f, 0.985f, -0.174f);
+    float fovy = 45.f * M_PI / 180.f;
+    float aspect_ratio = W * 1.f / H;
+    */
+    //car config1
+    /*
+    int H = 1080 / 2;
+    int W = 1920 / 2;
+    glm::vec3 eye(8.22f, -0.61f, -9.80f);
+    glm::vec3 center(7.514f, -0.702f, -9.097f);
+    glm::vec3 up(-0.065f, 0.996f, 0.065f);
+    float fovy = 45.f * M_PI / 180.f;
+    float aspect_ratio = W * 1.f / H;
+    */
+    /*
+    int H = 1080 / 4;
+    int W = 1920 / 4;
+    glm::vec3 eye(5.72f, 0.12f, 9.55f);
+    glm::vec3 center(5.085f, -0.131f, 8.819f);
+    glm::vec3 up(-0.165f, 0.968f, -0.189f);
+    float fovy = 45.f * M_PI / 180.f;
+    float aspect_ratio = W * 1.f / H;
+    */
+    Camera camera(eye, center, up, fovy, aspect_ratio, H);
+    Sampler sampler;
+
+    glm::mat4x4 view_mat = camera.getViewMat();
+
+    //load obj
+    std::string dir(argv[1]);
+    std::string filename(argv[2]);
+    TriangleMeshes triangleMeshes(dir, filename);
+
+    triangleMeshes.applyTransform(view_mat);
+    //std::vector<Triangle> area_lights = triangleMeshes.getAreaLights();
+    Scene scene(triangleMeshes);
+    if (argc >= 4) {
+      std::string env_map_name(argv[3]);
+      scene.createSkyBox(dir, env_map_name);
+    }
+    //calculate depth map
+    //return 0;
+
+    //luminars[0].outputp();
+    //luminars[1].outputp();
+    int sr = 50;
+    int sr1 = 16;
+    PathTracer tracer(1024);
+    //PathTracer tracer(1);
+    std::vector<float> depth_buffer(W * H, -FLT_MAX);
+    std::vector<glm::vec3> img(W * H, glm::vec3(0.f, 0.f, 0.f));
+    int total = 0;
+    std::mutex total_mutex;
+    #pragma omp parallel for
+    for (int j = 0; j < H; j++) {
+        //std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        for (int i = 0; i < W; i++) {
+            glm::vec2 u = sampler.uniformSample2D();
+            std::vector<Ray> rays = camera.castRay(i, j, sr1, u);
+            /*Ray ray = camera.castRay(i, j);
+            for (int k = 0; k < sr; k++) {
+                img[(j * W + i)] += tracer.Li(ray, scene, 0);
+              }
+            img[(j * W + i)] /= sr;
+            */
+            
+            for (auto ray : rays) {
+              for (int k = 0; k < sr; k++) {
+                //img[(j * W + i)] += glm::clamp(tracer.Li(ray, scene, 0), glm::vec3(0.f, 0.f, 0.f), glm::vec3(1.f, 1.f, 1.f));
+                img[(j * W + i)] += tracer.Li(ray, scene, 0);
+              }
+            }
+            img[(j * W + i)] /= (sr1);
+            img[(j * W + i)] /= sr;
+            
+            /*
+            for (auto ray : rays) {
+              //Ray ray = camera.castRay(i, j);
+              float t = FLT_MAX;
+              Hit hit_record;
+              if (scene.intersect(ray, t, hit_record)) {
+                if (hit_record.material->is_light) {
+                  img[(j * W + i)] += glm::clamp(hit_record.material->le, glm::vec3(0.f, 0.f, 0.f), glm::vec3(1.f, 1.f, 1.f));
+                }
+                else
+                  img[(j * W + i)] += glm::clamp(tracer.directLight(ray, scene, hit_record, 1), glm::vec3(0.f, 0.f, 0.f), glm::vec3(1.f, 1.f, 1.f));
+              }
+            }
+            img[(j * W + i)] /= (1.f * sr1);
+            */
+        }
+        //std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        //std::cout << j << " Time difference = " << std::chrono::duration_cast<std::chrono::seconds>(end - begin).count() << "[s]" << std::endl;
+        //std::cout << j * 1.f / H * 100.f << std::endl;
+        std::lock_guard<std::mutex> guard(total_mutex);
+        total += 1;
+        std::cout << total * 1.f / H * 100.f << std::endl;
+    }
+
+    /*
+    for (int j = 0; j < H; j++) {
+        for (int i = 0; i < W; i++) {
+            Ray ray = camera.castRay(i, j);
+            float t = FLT_MAX;
+            Hit hit_record;
+            if (scene.intersect(ray, t, hit_record)) {
+              if (hit_record.material->is_light) {
+                img[(j * W + i)] = hit_record.material->le;
+              } else {
+                for (int k = 0; k < sr; k++) {
+                  LightSample light = scene.sampleLight(sampler);
+                  Ray ray1 = hit_record.castRay(light.lp);
+                  if (scene.intersect(ray1)) {
+                    continue;
+                  }
+                  glm::vec3 wo = -ray.d;
+                  glm::vec3 wi = ray1.d;
+                  glm::vec3 sn = hit_record.norm;
+                  glm::vec3 f;
+                  glm::vec3 woo;
+                  float pdf;
+                  //glm::vec3 color = hit_record.material->getBRDF(wi, wo, hit_record.norm) * light.le;
+                  hit_record.material->sampleDiffuse(sampler, woo, f, pdf);
+                  glm::vec3 color = f / (float) M_PI * light.getRadiance(hit_record.hitpoint);
+                  //std::cout << color.r << " " << color.g << " " << color.b <<
+                  color *= glm::dot(hit_record.norm, wi);
+                  img[(j * W + i)] += color;
+                }
+                img[(j * W + i)] = 1.f / sr * img[(j * W + i)];
+              }
+            }
+        }
+        std::cout << j * 1.f / H * 100.f << std::endl;
+    }
+    */
+    output_jpg("box000.jpg", img, W, H);
+    //std::string output_filename = "depth_car01.ppm";
+    //output_depthmap(output_filename, depth_buffer, H, W);
+
+}
+
+void output_depthmap(std::string &filename, std::vector<float> depth_buffer, int H, int W) {
+  //if a object is more than K unit away from camera
+  //we consider the object is not avabliable
+  //float K = -6.f; //for cornellbox
+  float K = -20.f; // for car config1
+  std::ofstream fout(filename);
+  fout << "P2\n";
+  fout << W << " " << H << "\n";
+  fout << 65535 << "\n";
+  for (int j = 0; j < H; j++) {
+    for (int i = 0; i < W; i++) {
+      if (depth_buffer[j * W + i] > K) {
+        fout << (int) ((depth_buffer[j * W + i] - K) / abs(K) * 65535) << std::endl;
+      } else {
+        fout << "0\n";
+      }
+    }
+  }
+}
+
+void output_jpg(std::string name, std::vector<glm::vec3> img, int W, int H) {
+  unsigned char *data = NULL;
+  data = new unsigned char [W * H * 3];
+  for (int j = 0; j < H; j++) {
+    for (int i = 0; i < W; i++) {
+      data[3 * (j * W + i) + 0] = (unsigned char) (std::min(img[(j * W + i)].r, 1.f) * 255.f);
+      data[3 * (j * W + i) + 1] = (unsigned char) (std::min(img[(j * W + i)].g, 1.f) * 255.f);
+      data[3 * (j * W + i) + 2] = (unsigned char) (std::min(img[(j * W + i)].b, 1.f) * 255.f);
+      /*
+      if (data[3 * (j * W + i) + 0] == 255) {
+        std::cout << j << " " << i << std::endl;
+        std::cout << (std::min(img[(j * W + i)].r, 1.f) * 255.f) << std::endl;
+      }
+      */
+    }
+  }
+  stbi_write_jpg(name.c_str(), W, H, 3, data, 100);
+}

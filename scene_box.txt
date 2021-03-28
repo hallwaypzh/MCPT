@@ -1,0 +1,19 @@
+Output {
+    ss 16
+    rpp 400
+    width 1024
+    height 1024
+    name box11.jpg
+}
+
+Camera {
+    position 0 0 2.5
+    center 0 0 0
+    up 0 1 0
+    fov 60
+}
+
+Meshes {
+    directory example-scenes/cornellbox/
+    name cornellbox.obj
+}

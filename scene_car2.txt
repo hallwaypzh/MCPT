@@ -1,0 +1,24 @@
+Output {
+    ss 9
+    rpp 100
+    width 1920
+    height 1080
+    name car6.jpg
+}
+
+Camera {
+    position 5.72 0.12 9.55
+    center 5.085 -0.131 8.819
+    up -0.165 0.968 -0.189
+    fov 45.0
+}
+
+Meshes {
+    directory example-scenes/car/
+    name car.obj
+}
+
+SkyBox {
+    directory example-scenes/car/
+    name environment_dusk.hdr
+}
