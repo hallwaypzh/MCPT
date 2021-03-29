@@ -40,3 +40,6 @@ A relatively complete Monte Carlo Path Tracer include:
 
 # Dining(1920x1080, 9xSS, 100 rays per subpixel)
 ![Dining](./results/dining2.jpg)
+
+# Spaceship(1024x1024, 4xSS, 40 rays per subpixel)
+![Ship](./results/ship.jpg)

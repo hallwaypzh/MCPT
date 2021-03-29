@@ -1,0 +1,24 @@
+Output {
+    ss 4
+    rpp 80
+    width 1024
+    height 1024
+    name ship.jpg
+}
+
+Camera {
+    position 5. 1.5 -4.5
+    center 0 0 0
+    up 0 1 0
+    fov 60
+}
+
+Meshes {
+    directory example-scenes/aircraft/
+    name ship.obj
+}
+
+SkyBox {
+    directory example-scenes/aircraft/
+    name environment_dusk.hdr
+}

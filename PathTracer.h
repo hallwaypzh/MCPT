@@ -20,7 +20,7 @@ public:
     glm::vec3 directLight(const Ray &r, Scene &scene, Hit &hit, int sr) {
         glm::vec3 color(0.f);
         
-        float thresh = scene.getLightNums() * 1.f / scene.getLightNums();
+        float thresh = scene.getLightNums() * 1.f / (scene.getLightNums() + 1.f);
         for (int k = 0; k < sr; k++) {
             float rv = sampler.uniformSample1D();
             if (rv < thresh) {

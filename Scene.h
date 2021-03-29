@@ -87,7 +87,7 @@ public:
         glm::vec3 d = glm::vec3(inv_view_mat * glm::vec4(ray.d, 0.f));
         //std::cout << d.x << " " << d.y << " " << d.z << std::endl;
         if (skyBox == NULL && envMap == NULL)
-            return glm::vec3(0.f);
+            return glm::vec3(0.7f);
         if (envMap != NULL) {
             return envMap->sampleLi1(d);
         }
